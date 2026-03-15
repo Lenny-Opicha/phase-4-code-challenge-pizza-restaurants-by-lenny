@@ -1,40 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 function Home() {
-  const [restaurants, setRestaurants] = useState([]);
+  const [pizzas, setPizzas] = useState([]);
 
   useEffect(() => {
-    fetch("/restaurants")
-      .then((r) => r.json())
-      .then(setRestaurants);
+    fetch("/pizzas") // works if proxy is set in package.json
+      .then((res) => res.json())
+      .then((data) => setPizzas(data))
+      .catch((err) => console.error(err));
   }, []);
 
-  function handleDelete(id) {
-    fetch(`/restaurants/${id}`, {
-      method: "DELETE",
-    }).then((r) => {
-      if (r.ok) {
-        setRestaurants((restaurants) =>
-          restaurants.filter((restaurant) => restaurant.id !== id)
-        );
-      }
-    });
-  }
-
   return (
-    <section className="container">
-      {restaurants.map((restaurant) => (
-        <div key={restaurant.id} className="card">
-          <h2>
-            <Link to={`/restaurants/${restaurant.id}`}>{restaurant.name}</Link>
-          </h2>
-          <p>Address: {restaurant.address}</p>
-          <button onClick={() => handleDelete(restaurant.id)}>Delete</button>
-        </div>
-      ))}
-    </section>
+    <div>
+      <h1>All Pizzas</h1>
+      <ul>
+        {pizzas.map((pizza) => (
+          <li key={pizza.id}>
+            {pizza.name} - {pizza.toppings} (${pizza.price})
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-export default Home;
+export default Home; 
