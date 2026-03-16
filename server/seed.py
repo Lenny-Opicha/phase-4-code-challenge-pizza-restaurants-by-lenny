@@ -10,7 +10,6 @@ with app.app_context():
         name="Shelly Figueroa",
         address="75839 Valenzuela Crescent Apt. 012 North Angelafort"
     )
-
     r2 = Restaurant(
         name="Jody Anderson",
         address="803 Lisa Roads Camposchester"
