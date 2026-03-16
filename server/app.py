@@ -1,110 +1,98 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_cors import CORS
+
 from models import db, Restaurant, Pizza, RestaurantPizza
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pizza.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+migrate = Migrate(app, db)
 
 CORS(app)
 
-db.init_app(app)
 
-
-@app.route("/")
+@app.route('/')
 def index():
     return {"message": "Pizza API running"}
 
 
-# ----------------------------
-# GET ALL RESTAURANTS
-# ----------------------------
-@app.route("/restaurants", methods=["GET"])
-def get_restaurants():
+# GET all restaurants
+@app.route('/restaurants')
+def restaurants():
 
     restaurants = Restaurant.query.all()
 
-    return jsonify([
-        {
-            "id": r.id,
-            "name": r.name,
-            "address": r.address
-        }
-        for r in restaurants
-    ]), 200
+    restaurants_list = []
+
+    for restaurant in restaurants:
+        restaurants_list.append({
+            "id": restaurant.id,
+            "name": restaurant.name,
+            "address": restaurant.address
+        })
+
+    return jsonify(restaurants_list), 200
 
 
-# ----------------------------
-# GET RESTAURANT BY ID
-# ----------------------------
-@app.route("/restaurants/<int:id>", methods=["GET"])
-def get_restaurant(id):
+# GET single restaurant
+@app.route('/restaurants/<int:id>')
+def restaurant_by_id(id):
 
     restaurant = Restaurant.query.get(id)
 
     if not restaurant:
         return {"error": "Restaurant not found"}, 404
 
-    return {
+    pizzas = []
+
+    for rp in restaurant.restaurant_pizzas:
+        pizzas.append({
+            "id": rp.pizza.id,
+            "name": rp.pizza.name,
+            "ingredients": rp.pizza.ingredients
+        })
+
+    restaurant_data = {
         "id": restaurant.id,
         "name": restaurant.name,
         "address": restaurant.address,
-        "pizzas": [
-            {
-                "id": p.id,
-                "name": p.name,
-                "ingredients": p.ingredients
-            }
-            for p in restaurant.pizzas
-        ]
-    }, 200
+        "pizzas": pizzas
+    }
+
+    return jsonify(restaurant_data), 200
 
 
-# ----------------------------
-# DELETE RESTAURANT
-# ----------------------------
-@app.route("/restaurants/<int:id>", methods=["DELETE"])
-def delete_restaurant(id):
-
-    restaurant = Restaurant.query.get(id)
-
-    if not restaurant:
-        return {"error": "Restaurant not found"}, 404
-
-    db.session.delete(restaurant)
-    db.session.commit()
-
-    return "", 204
-
-
-# ----------------------------
-# GET ALL PIZZAS
-# ----------------------------
-@app.route("/pizzas", methods=["GET"])
-def get_pizzas():
+# GET all pizzas
+@app.route('/pizzas')
+def pizzas():
 
     pizzas = Pizza.query.all()
 
-    return jsonify([
-        {
-            "id": p.id,
-            "name": p.name,
-            "ingredients": p.ingredients
-        }
-        for p in pizzas
-    ]), 200
+    pizza_list = []
+
+    for pizza in pizzas:
+        pizza_list.append({
+            "id": pizza.id,
+            "name": pizza.name,
+            "ingredients": pizza.ingredients
+        })
+
+    return jsonify(pizza_list), 200
 
 
-# ----------------------------
-# CREATE RESTAURANT PIZZA
-# ----------------------------
-@app.route("/restaurant_pizzas", methods=["POST"])
+# POST restaurant_pizzas
+@app.route('/restaurant_pizzas', methods=['POST'])
 def create_restaurant_pizza():
 
     data = request.get_json()
 
     try:
+
         new_rp = RestaurantPizza(
             price=data["price"],
             pizza_id=data["pizza_id"],
@@ -115,26 +103,17 @@ def create_restaurant_pizza():
         db.session.commit()
 
         pizza = Pizza.query.get(data["pizza_id"])
-        restaurant = Restaurant.query.get(data["restaurant_id"])
 
-        return {
-            "id": new_rp.id,
-            "price": new_rp.price,
-            "pizza": {
-                "id": pizza.id,
-                "name": pizza.name,
-                "ingredients": pizza.ingredients
-            },
-            "restaurant": {
-                "id": restaurant.id,
-                "name": restaurant.name,
-                "address": restaurant.address
-            }
-        }, 201
+        return jsonify({
+            "id": pizza.id,
+            "name": pizza.name,
+            "ingredients": pizza.ingredients
+        }), 201
 
-    except Exception:
-        return {"errors": ["validation errors"]}, 400
+    except Exception as e:
+
+        return {"errors": [str(e)]}, 400
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(port=5555, debug=True) 
